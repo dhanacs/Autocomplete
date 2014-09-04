@@ -1,136 +1,105 @@
 // Trie Insert and Search.
 
-import java.io.File;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
+import java.util.Map.Entry;
 
 public class Trie
 {
-  private TrieNode root;
-  private String words[];
+  private final Map<Character, Trie> children;
+  private String value;
+  private boolean terminal = false;
 
-  public void initializeTrie()
+  public Trie()
   {
-    // Read the words from the file.
-    try
-    {
-      Path filePath = new File("Words.txt").toPath();
-      Charset charset = Charset.defaultCharset();
-      List<String> stringList = Files.readAllLines(filePath, charset);
-      words = stringList.toArray(new String[]{});
-    }
-    catch(Exception e)
-    {
-      System.out.println("Error reading words from the dictionary.");
-    }
-
-    // Initialize the Trie with words.
-    for(String word : words)
-    {
-      addWord(word);
-    }
+    this(null);
   }
 
-  public void addWord(String word)
+  private Trie(String value)
   {
-    if(root == null)
-    {
-      root = new TrieNode(' ');
-    }
-
-    TrieNode start = root;
-    char[] characters = word.toCharArray();
-
-    for(char c : characters)
-    {
-      if(start.getChildren().size() == 0)
-      {
-        TrieNode newNode = new TrieNode(c);
-        start.getChildren().add(newNode);
-        start = newNode;
-      }
-      else
-      {
-        ListIterator iterator = start.getChildren().listIterator();
-        TrieNode node = null;
-
-        while(iterator.hasNext())
-        {
-          node = (TrieNode) iterator.next();
-          if(node.getCharacter() >= c) break;
-        }
-        if(node.getCharacter() == c)
-        {
-          start = node;
-        }
-        else
-        {
-          TrieNode newNode = new TrieNode(c);
-          iterator.add(newNode);
-          start = newNode;
-        }
-      }
-    }
+    this.value = value;
+    children = new HashMap<Character, Trie>();
   }
 
-  public List search(String prefix)
+  private void add(char character)
   {
-    if(prefix == null || prefix.isEmpty()) return null;
+    String value;
 
-    char[] chars = prefix.toCharArray();
-    TrieNode start = root;
-    boolean flag = false;
-    for(char c : chars)
-    {
-      if(start.getChildren().size() > 0)
-      {
-        for(TrieNode node : start.getChildren())
-        {
-          if(node.getCharacter() == c)
-          {
-            start = node;
-            flag = true;
-            break;
-          }
-        }
-      }
-      else
-      {
-        flag = false;
-        break;
-      }
-    }
+    if(this.value == null) value = Character.toString(character);
+    else value = this.value + character;
 
-    if(flag)
-    {
-      List matches = getAllWords(start, prefix);
-      return matches;
-    }
-
-    return null;
+    children.put(character, new Trie(value));
   }
 
-  private List getAllWords(TrieNode start, final String prefix)
+  public void insert(String word)
   {
-    if(start.getChildren().size() == 0)
+    if(word == null)
     {
-      List list = new LinkedList();
-      list.add(prefix);
-      return list;
+      System.out.println("-1");;
     }
-    else
+
+    Trie node = this;
+    for(char c : word.toCharArray())
     {
-      List list = new LinkedList();
-      for(TrieNode n : start.getChildren())
+      if(!node.children.containsKey(c))
       {
-        list.addAll(getAllWords(n, prefix + n.getCharacter()));
+        node.add(c);
       }
 
-      return list;
+      node = node.children.get(c);
     }
+
+    node.terminal = true;
+  }
+
+  public String find(String word)
+  {
+    Trie node = this;
+      
+    for(char c : word.toCharArray())
+    {
+      if(!node.children.containsKey(c))
+      {
+        return "";
+      }
+
+      node = node.children.get(c);
+    }
+
+    return node.value;
+  }
+
+  public Collection<String> autoComplete(String prefix)
+  {
+    Trie node = this;
+        
+    for(char c : prefix.toCharArray())
+    {
+      if(!node.children.containsKey(c))
+      {
+        return Collections.emptyList();
+      }
+      node = node.children.get(c);
+    }
+
+    return node.allPrefixes();
+  }
+
+  private Collection<String> allPrefixes()
+  {
+    List<String> results = new ArrayList<String>();
+
+    if(this.terminal)
+    {
+      results.add(this.value);
+    }
+
+    for(Entry<Character, Trie> entry : children.entrySet())
+    {
+      Trie child = entry.getValue();
+      Collection<String> childPrefixes = child.allPrefixes();
+      results.addAll(childPrefixes);
+    }
+
+    return results;
   }
 }
